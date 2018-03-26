@@ -88,6 +88,31 @@ class TestClass
         }
 
         [Fact]
+        public void AssignmentStatementInDeclarationWithConditionalCompilation()
+        {
+            TestConversionVisualBasicToCSharp(@"#If DEBUG Then
+Class TestClass
+    Private Sub TestMethod()
+        Dim b As Integer = 0
+    End Sub
+End Class
+#End If", @"using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.VisualBasic;
+
+#if Debug
+class TestClass
+{
+    private void TestMethod()
+    {
+        int b = 0;
+    }
+}
+#endif");
+        }
+
+        [Fact]
         public void AssignmentStatementInVarDeclaration()
         {
             TestConversionVisualBasicToCSharp(@"Class TestClass

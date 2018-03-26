@@ -25,7 +25,38 @@ namespace ICSharpCode.CodeConverter.CSharp
         }
         public override CSharpSyntaxNode DefaultVisit(SyntaxNode node)
         {
-            return TriviaConverter.PortConvertedTrivia(node, _wrappedVisitor.Visit(node));
+            var convertedNode = TriviaConverter.PortConvertedTrivia(node, _wrappedVisitor.Visit(node))
+                .WithPrependedLeadingTrivia(ConvertStructuredTrivia(node.GetLeadingTrivia()))
+                .WithAppendedTrailingTrivia(ConvertStructuredTrivia(node.GetTrailingTrivia()));
+            return convertedNode;
+        }
+
+        private SyntaxTrivia[] ConvertStructuredTrivia(SyntaxTriviaList triviaList)
+        {
+            return triviaList.Where(t => t.HasStructure)
+                .Select(ConvertStructuredTrivia).ToArray();
+        }
+
+        private SyntaxTrivia ConvertStructuredTrivia(SyntaxTrivia t)
+        {
+            var convertedStructure = (CsSyntax.StructuredTriviaSyntax) Visit(t.GetStructure());
+            return SyntaxFactory.Trivia(convertedStructure);
+        }
+
+        public override CSharpSyntaxNode VisitIfDirectiveTrivia(VbSyntax.IfDirectiveTriviaSyntax node)
+        {
+            return SyntaxFactory.IfDirectiveTrivia((CsSyntax.ExpressionSyntax) node.Condition.Accept(this), true, true, true);
+                    
+        }
+
+        public override CSharpSyntaxNode VisitElseDirectiveTrivia(VbSyntax.ElseDirectiveTriviaSyntax node)
+        {
+            return SyntaxFactory.ElseDirectiveTrivia(true, true);
+        }
+
+        public override CSharpSyntaxNode VisitEndIfDirectiveTrivia(VbSyntax.EndIfDirectiveTriviaSyntax node)
+        {
+            return SyntaxFactory.EndIfDirectiveTrivia(true);
         }
 
         public override CSharpSyntaxNode VisitModuleBlock(VbSyntax.ModuleBlockSyntax node)
