@@ -556,6 +556,7 @@ End Class", @"class TestClass
         ' Combine rank specifiers with initializers of various kinds
         Dim rankSpecifiers(,) As Double = New Double(1,1) {{1.0, 2.0}, {3.0, 4.0}}
         Dim rankSpecifiers2(,) As Double = New Double(1,1) {}
+        Dim rankSpecifiers3(,) As Double = {}
 
         ' Declare a jagged array
         Dim sales()() As Double = New Double(11)() {}
@@ -579,6 +580,7 @@ End Class", @"class TestClass
         // Combine rank specifiers with initializers of various kinds
         double[,] rankSpecifiers = new double[2, 2] { { 1.0, 2.0 }, { 3.0, 4.0 } };
         double[,] rankSpecifiers2 = new double[2, 2];
+        double[,] rankSpecifiers3 = new double[,] { };
 
         // Declare a jagged array
         double[][] sales = new double[12][] { };
