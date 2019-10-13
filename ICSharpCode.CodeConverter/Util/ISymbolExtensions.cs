@@ -5,6 +5,8 @@ using System.Reflection;
 using ICSharpCode.CodeConverter.CSharp;
 using ICSharpCode.CodeConverter.Shared;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
 
 namespace ICSharpCode.CodeConverter.Util
@@ -238,6 +240,13 @@ namespace ICSharpCode.CodeConverter.Util
         {
             return declaredSymbol is ITypeSymbol ts && (ts.DeclaringSyntaxReferences.Length > 1
                 || ts.ContainingAssembly.Name == ForcePartialTypesAssemblyName);
+        }
+
+        public static NameSyntax CreateCsNameSyntax(this SyntaxGenerator syntaxGenerator, ISymbol declaredSymbol)
+        {
+            if (declaredSymbol is ITypeSymbol t) return SyntaxFactory.ParseName(((TypeSyntax) syntaxGenerator.TypeExpression(t)).ToString());
+            if (declaredSymbol is INamespaceSymbol n) return SyntaxFactory.ParseName(n.GetFullMetadataName());
+            return SyntaxFactory.QualifiedName(CreateCsNameSyntax(syntaxGenerator, declaredSymbol.ContainingSymbol), SyntaxFactory.IdentifierName(declaredSymbol.MetadataName));
         }
     }
 }

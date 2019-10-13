@@ -168,12 +168,25 @@ namespace ICSharpCode.CodeConverter.Util
                 parentType = parentType.ContainingType;
             }
             var ns = symbol.ContainingNamespace;
-            while (ns != null && !ns.IsGlobalNamespace) {
-                fullName.Insert(0, '.');
-                fullName.Insert(0, ns.MetadataName);
+            GetFullMetadataName(ns, fullName);
+            return fullName.ToString();
+        }
+
+        public static string GetFullMetadataName(this INamespaceSymbol ns)
+        {
+            var sb = new StringBuilder();
+            ns.GetFullMetadataName(sb);
+            return sb.ToString();
+        }
+
+        private static void GetFullMetadataName(this INamespaceSymbol ns, StringBuilder suffix)
+        {
+            while (ns != null && !ns.IsGlobalNamespace)
+            {
+                suffix.Insert(0, '.');
+                suffix.Insert(0, ns.MetadataName);
                 ns = ns.ContainingNamespace;
             }
-            return fullName.ToString();
         }
     }
 }
