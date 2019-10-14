@@ -1862,7 +1862,25 @@ internal partial class TestClass
     }
 }");
         }
-        
+
+        [Fact]
+        public async Task TypePromotedMemberAccessForSpecialTypes()
+        {
+            await TestConversionVisualBasicToCSharp(@"Friend Module Module1
+    Sub Main()
+        Dim x = Microsoft.VisualBasic.Timer
+    End Sub
+End Module", @"using Microsoft.VisualBasic;
+
+internal static partial class Module1
+{
+    public static void Main()
+    {
+        double x = DateAndTime.Timer;
+    }
+}");
+        }
+
         [Fact]
         public async Task NameQualifyingHandlesInheritance()
         {
