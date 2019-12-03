@@ -5,16 +5,6 @@ using System.Reflection;
 
 namespace ICSharpCode.CodeConverter.Util
 {
-    [Flags]
-    internal enum BindingFlags
-    {
-        Default = 0,
-        Instance = 1,
-        Static = 2,
-        Public = 4,
-        NonPublic = 8,
-    }
-
     internal static class ReflectionCompatibilityExtensions
     {
         public static object[] GetCustomAttributes(this Type type, bool inherit)
