@@ -22,14 +22,8 @@
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ICSharpCode.CodeConverter\ICSharpCode.CodeConverter.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\ICSharpCode.CodeConverter\Shared\DefaultReferences.cs" Link="DefaultReferences.cs" />
-    <Compile Remove="TestData\**\*.*" />
-    <None Include="TestData\**\*.*" />
-  </ItemGroup>
-  <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Web" />
   </ItemGroup>
 </Project>
