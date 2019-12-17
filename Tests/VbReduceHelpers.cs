@@ -1,7 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Simplification;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
+using Xunit;
 
 namespace CodeConverter.Tests
 {
@@ -11,9 +15,17 @@ namespace CodeConverter.Tests
         {
             using (var workspace = new AdhocWorkspace()) {
                 Document docInProject = VbProjectHelpers.GetVbProjectWithDocument(validInputVb, workspace);
+                await AssertNoCompileWarnings(docInProject);
                 var withExpandedRoot = await ReduceVbInternal(docInProject);
+                await AssertNoCompileWarnings(withExpandedRoot);
                 return (await withExpandedRoot.GetSyntaxRootAsync()).ToFullString();
             }
+        }
+
+        private static async Task AssertNoCompileWarnings(Document docInProject)
+        {
+            var compilation = await docInProject.Project.GetCompilationAsync();
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity >= DiagnosticSeverity.Warning));
         }
 
         private static async Task<Document> ReduceVbInternal(Document convertedDocument)

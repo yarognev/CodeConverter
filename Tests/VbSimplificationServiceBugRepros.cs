@@ -6,7 +6,6 @@ namespace CodeConverter.Tests
 {
     /// <summary>
     /// TODO:
-    /// * Ensure input VB has no error diagnostics
     /// * Add repros for:
     ///   *  MyBase instead of forms when using static MyForms property
     ///   *  Double qualification (related to ambiguous references perhaps)
