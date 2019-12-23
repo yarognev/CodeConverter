@@ -55,10 +55,11 @@ namespace ICSharpCode.CodeConverter.VB
         private static async Task<Solution> RenameClashingSymbols(Document document, SemanticModel semanticModel, CS.CSharpSyntaxNode root)
         {
             var toRename = root
-                .DescendantNodes(n => !IsLocalSymbolDeclaration(n)).Where(IsSymbolDeclaration)
+                .DescendantNodes(n => !(n is CSS.ExpressionSyntax)).Where(n => n is CSS.BaseTypeDeclarationSyntax)
                 .Select(id =>
                 {
-                    var idSymbol = semanticModel.GetDeclaredSymbol(id);
+                    var idSymbol = (ITypeSymbol) semanticModel.GetDeclaredSymbol(id);
+                    var allSymbols = GetCsSymbolsDeclaredByType(semanticModel, idSymbol).Select(s => s.OriginalDefinition).ToList();
                     var potentialClashes = idSymbol != null ? GetPotentialClashes(semanticModel, id, idSymbol) : null;
                     return (idSymbol, potentialClashes);
                 }).ToLookup(x => x.idSymbol, x => x.potentialClashes)
@@ -79,6 +80,75 @@ namespace ICSharpCode.CodeConverter.VB
             }
 
             return solution;
+        }
+
+        public static IEnumerable<ISymbol> GetCsSymbolsDeclaredByType(SemanticModel semanticModel, ITypeSymbol typeSymbol)
+        {
+            var members = typeSymbol.GetMembers();
+            if (!members.Any())
+                return DeclarationWhereNotNull(typeSymbol, (CSS.BaseTypeDeclarationSyntax r) => r.OpenBraceToken.Span.End)
+                    .SelectMany(r => semanticModel.LookupSymbols(r, typeSymbol));
+            return members.SelectMany(x => {
+                switch (x) {
+                    case IMethodSymbol methodSymbol:
+                        return GetCsSymbolsDeclaredByMethod(semanticModel, methodSymbol);
+                    case IPropertySymbol propertySymbol:
+                        return GetCsSymbolsDeclaredByProperty(semanticModel, propertySymbol);
+                    case ITypeSymbol nestedTypeSymbol:
+                        return GetCsSymbolsDeclaredByType(semanticModel, nestedTypeSymbol);
+                    case IEventSymbol eventSymbol:
+                        return GetCsSymbolsDeclaredByEvent(semanticModel, eventSymbol);
+                    case IFieldSymbol fieldSymbol:
+                        return GetCsSymbolsDeclaredByField(semanticModel, fieldSymbol);
+                    default:
+                        return new ISymbol[0];
+                }
+            });
+        }
+
+        public static IEnumerable<ISymbol> GetCsSymbolsDeclaredByMethod(SemanticModel semanticModel, IMethodSymbol methodSymbol)
+        {
+            if (methodSymbol == null) return new ISymbol[0];
+            var symbols =
+                methodSymbol.TypeParameters
+                    .Concat<ISymbol>(methodSymbol.Parameters);
+            var bodies = DeclarationWhereNotNull(methodSymbol, (CSS.BaseMethodDeclarationSyntax b) => (CS.CSharpSyntaxNode)b.ExpressionBody ?? b.Body);
+            foreach(var body in bodies) {
+                symbols = symbols.Concat(semanticModel.LookupSymbols(body.SpanStart, methodSymbol.ContainingType));
+                var descendantNodes = body.DescendantNodes().OfType<CSS.BlockSyntax>();
+                symbols = symbols.Concat(descendantNodes.SelectMany(d => semanticModel.LookupSymbols(d.SpanStart, methodSymbol.ContainingType)));
+            }
+
+            return symbols;
+        }
+
+        private static IEnumerable<TResult> DeclarationWhereNotNull<TNode, TResult>(ISymbol symbol, Func<TNode, TResult> selectWhereNotNull)
+        {
+            return symbol.DeclaringSyntaxReferences.Select(d => d.GetSyntax()).OfType<TNode>().Select(selectWhereNotNull).Where(x => x != null);
+        }
+
+        private static IEnumerable<TResult> DeclarationWhereManyNotNull<TNode, TResult>(ISymbol symbol, Func<TNode, IEnumerable<TResult>> selectManyWhereNotNull)
+        {
+            return symbol.DeclaringSyntaxReferences.Select(d => d.GetSyntax()).OfType<TNode>().SelectMany(selectManyWhereNotNull).Where(x => x != null);
+        }
+
+        public static IEnumerable<ISymbol> GetCsSymbolsDeclaredByProperty(SemanticModel semanticModel, IPropertySymbol propertySymbol)
+        {
+            return GetCsSymbolsDeclaredByMethod(semanticModel, propertySymbol.GetMethod)
+                .Concat(GetCsSymbolsDeclaredByMethod(semanticModel, propertySymbol.SetMethod));
+        }
+
+        public static IEnumerable<ISymbol> GetCsSymbolsDeclaredByField(SemanticModel semanticModel, IFieldSymbol fieldSymbol)
+        {
+            return DeclarationWhereManyNotNull(fieldSymbol,
+                (CSS.BaseFieldDeclarationSyntax f) => f.Declaration.Variables.Select(v => v.Initializer?.Value))
+                .SelectMany(i => semanticModel.LookupSymbols(i.SpanStart, fieldSymbol.ContainingType));
+        }
+
+        public static IEnumerable<ISymbol> GetCsSymbolsDeclaredByEvent(SemanticModel semanticModel, IEventSymbol propertySymbol)
+        {
+            return GetCsSymbolsDeclaredByMethod(semanticModel, propertySymbol.AddMethod)
+                .Concat(GetCsSymbolsDeclaredByMethod(semanticModel, propertySymbol.RemoveMethod));
         }
 
         private static async Task<string> GenerateUniqueCaseInsensitiveName(SemanticModel model, ISymbol declaration)
