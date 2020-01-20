@@ -2,6 +2,9 @@
 using ICSharpCode.CodeConverter.Shared;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.VisualBasic;
+using VBasic = Microsoft.CodeAnalysis.VisualBasic;
+using VBSyntax = Microsoft.CodeAnalysis.VisualBasic.Syntax;
+using static ICSharpCode.CodeConverter.CSharp.SyntaxKindExtensions;
 
 namespace ICSharpCode.CodeConverter.CSharp
 {

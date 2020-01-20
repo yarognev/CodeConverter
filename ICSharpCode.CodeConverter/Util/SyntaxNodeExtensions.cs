@@ -768,6 +768,13 @@ namespace ICSharpCode.CodeConverter.Util
             return node.WithLeadingTrivia(convertedTrivia);
         }
 
+        public static SyntaxNode WithConvertedTrailingTriviaFrom(this SyntaxNode node, SyntaxNode otherNode)
+        {
+            var originalLastToken = node.GetLastToken();
+            var newLastToken = WithConvertedTrailingTriviaFrom(originalLastToken, otherNode.GetLastToken());
+            return node.ReplaceToken(originalLastToken, newLastToken);
+        }
+
         public static SyntaxToken WithConvertedTrailingTriviaFrom(this SyntaxToken node, SyntaxNode otherNode)
         {
             return node.WithConvertedTrailingTriviaFrom(otherNode?.GetLastToken());

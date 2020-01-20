@@ -1128,41 +1128,40 @@ public partial class AcmeClass
         }
 
         [Fact]
-        public async Task IfStatement()
+        public async Task IfStatementWithComments()
         {
             await TestConversionVisualBasicToCSharpWithoutComments(@"Class TestClass
     Private Sub TestMethod(ByVal a As Integer)
         Dim b As Integer
 
-        If a = 0 Then
+        If a = 0 Then ' just the first case
             b = 0
-        ElseIf a = 1 Then
+        ElseIf a = 1 Then 'elseif
             b = 1
-        ElseIf a = 2 OrElse a = 3 Then
+        ElseIf a = 2 OrElse a = 3 Then ' Another elseif
             b = 2
-        Else
+        Else 'else
             b = 3
-        End If
+        End If 'end of the if statement
     End Sub
 End Class", @"internal partial class TestClass
 {
     private void TestMethod(int a)
     {
         int b;
-
-        if (a == 0)
+        if (a == 0) // just the first case
         {
             b = 0;
         }
-        else if (a == 1)
+        else if (a == 1) // elseif
         {
             b = 1;
         }
-        else if (a == 2 || a == 3)
+        else if (a == 2 || a == 3) // Another elseif
         {
             b = 2;
         }
-        else
+        else // else
         {
             b = 3;
         }
