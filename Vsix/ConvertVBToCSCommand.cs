@@ -100,7 +100,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
                 projectCtxMenuItem.BeforeQueryStatus += SolutionOrProjectMenuItem_BeforeQueryStatusAsync;
                 commandService.AddCommand(projectCtxMenuItem);
 
-                // Command in project context menu
+                // Command in solution context menu
                 var solutionCtxMenuCommandId = new CommandID(CommandSet, SolutionCtxMenuCommandId);
                 var solutionCtxMenuItem = package.CreateCommand(SolutionOrProjectMenuItemCallbackAsync, solutionCtxMenuCommandId);
                 solutionCtxMenuItem.BeforeQueryStatus += SolutionOrProjectMenuItem_BeforeQueryStatusAsync;
