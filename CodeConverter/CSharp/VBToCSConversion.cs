@@ -26,6 +26,9 @@ namespace ICSharpCode.CodeConverter.CSharp
         private IProgress<ConversionProgress> _progress;
         private CancellationToken _cancellationToken;
 
+
+        public string SourceLanguage { get; } = LanguageNames.VisualBasic;
+        public string TargetLanguage { get; } = LanguageNames.CSharp;
         public ConversionOptions ConversionOptions { get; set; }
 
 
@@ -89,8 +92,6 @@ namespace ICSharpCode.CodeConverter.CSharp
                    xml.Substring(defineConstantsStart, defineConstantsEnd - defineConstantsStart).Replace(",", ";") +
                    xml.Substring(defineConstantsEnd);
         }
-
-        public string TargetLanguage { get; } = LanguageNames.CSharp;
 
         public bool CanBeContainedByMethod(SyntaxNode node)
         {

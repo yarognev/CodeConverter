@@ -21,6 +21,7 @@ namespace ICSharpCode.CodeConverter
             bool surroundedWithMethod);
         IReadOnlyCollection<(string, string)> GetProjectTypeGuidMappings();
         IEnumerable<(string, string)> GetProjectFileReplacementRegexes();
+        string SourceLanguage { get; }
         string TargetLanguage { get; }
         ConversionOptions ConversionOptions { get; set; }
 

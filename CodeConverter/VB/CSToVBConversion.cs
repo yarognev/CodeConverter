@@ -21,9 +21,12 @@ namespace ICSharpCode.CodeConverter.VB
         private const string UnresolvedNamespaceDiagnosticId = "BC40056";
 
         private CSToVBProjectContentsConverter _csToVbProjectContentsConverter;
-        public ConversionOptions ConversionOptions { get; set; }
         private IProgress<ConversionProgress> _progress;
         private CancellationToken _cancellationToken;
+
+        public string SourceLanguage { get; } = LanguageNames.CSharp;
+        public string TargetLanguage { get; } = LanguageNames.VisualBasic;
+        public ConversionOptions ConversionOptions { get; set; }
 
         public async Task<IProjectContentsConverter> CreateProjectContentsConverter(Project project, IProgress<ConversionProgress> progress, CancellationToken cancellationToken)
         {
@@ -93,8 +96,6 @@ namespace ICSharpCode.CodeConverter.VB
                    s.Substring(defineConstantsStart, defineConstantsEnd - defineConstantsStart).Replace(";", ",") +
                    s.Substring(defineConstantsEnd);
         }
-
-        public string TargetLanguage { get; } = LanguageNames.VisualBasic;
 
         public bool CanBeContainedByMethod(SyntaxNode node)
         {
