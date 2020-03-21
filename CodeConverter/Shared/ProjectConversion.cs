@@ -78,6 +78,86 @@ namespace ICSharpCode.CodeConverter.Shared
             return codeResult;
         }
 
+        /// <summary>
+        /// TODO:
+        /// * Make this internal, and call through a decent public interface - e.g. ConversionWorkspace
+        /// * Allow source effects (i.e. renames) from one conversion to affect the next, but not reference changes
+        /// </summary>
+        public static IAsyncEnumerable<ConversionResult> Convert<TLanguageConversion>(Workspace workspace, IReadOnlyCollection<FileInfo> toConvert,
+            IProgress<ConversionProgress> progress, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        {
+            var solutionProjects = workspace.CurrentSolution.Projects.ToDictionary(p => p.FilePath ?? "", StringComparer.OrdinalIgnoreCase);
+            var filesByType = toConvert.ToLookup(GetFileType);
+            var languageConversion = new TLanguageConversion();
+            if (filesByType[FileType.Solution].Any()) {
+                var projects = workspace.CurrentSolution.Projects.Where(p => p.Language == languageConversion.SourceLanguage);
+                return ConvertProjects<TLanguageConversion>(progress, languageConversion, projects, cancellationToken);
+            }
+            var projectsToConvert = filesByType[FileType.Project].SelectMany(f => solutionProjects.TryGetValue(f.FullName, out var p) ? p.Yield() : Enumerable.Empty<Project>()).ToArray();
+            var projectIdsToConvert = new HashSet<ProjectId>(projectsToConvert.Select(p => p.Id));
+            var documentsToConvert = filesByType[FileType.Document].SelectMany(f =>
+                workspace.CurrentSolution.GetDocumentIdsWithFilePath(f.FullName)
+                    .Where(d => !projectIdsToConvert.Contains(d.ProjectId))
+            ).ToArray();
+
+            var docResults = documentsToConvert.Any() ?
+                ConvertDocuments<TLanguageConversion>(workspace, progress, documentsToConvert, cancellationToken)
+                : AsyncEnumerable.Empty<ConversionResult>();
+
+            return docResults.Concat(ConvertProjects<TLanguageConversion>(progress, languageConversion, projectsToConvert, cancellationToken));
+        }
+
+        /// <summary>
+        /// TODO: Group by project, do a single ProjectConversion with multiple documents per project
+        /// </summary>
+        private static IAsyncEnumerable<ConversionResult> ConvertDocuments<TLanguageConversion>(Workspace workspace, IProgress<ConversionProgress> progress, DocumentId[] documentsToConvert, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        {
+            return documentsToConvert.ToAsyncEnumerable().SelectAwait(async d => await ConvertSingle<TLanguageConversion>(workspace.CurrentSolution.GetDocument(d), new SingleConversionOptions(), progress, cancellationToken));
+        }
+
+        private static IAsyncEnumerable<ConversionResult> ConvertProjects<TLanguageConversion>(IProgress<ConversionProgress> progress, TLanguageConversion languageConversion, IEnumerable<Project> projects, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        {
+            return projects.ToAsyncEnumerable().SelectMany(project => ConvertProject(project, languageConversion, progress, cancellationToken));
+        }
+
+        private static object GetFileType(FileInfo f)
+        {
+            switch (f.Extension) {
+                case ".cs":
+                case ".vb":
+                    return FileType.Document;
+                case ".csproj":
+                case ".vbproj":
+                    return FileType.Project;
+                case ".sln":
+                    return FileType.Solution;
+            }
+            return FileType.Unknown;
+        }
+
+        private static FileType GetDocuments(Workspace workspace, FileInfo f)
+        {
+            switch (f.Extension) {
+                case ".cs":
+                case ".vb":
+                    return FileType.Document;
+                case ".csproj":
+                case ".vbproj":
+                    return FileType.Project;
+                case ".sln":
+                    return FileType.Solution;
+            }
+            throw new ArgumentOutOfRangeException("File extension", f.Extension, null);
+        }
+
+        private enum FileType
+        {
+            Unknown,
+            Document,
+            Project,
+            Solution
+        }
+
         public static async IAsyncEnumerable<ConversionResult> ConvertProject(Project project,
             ILanguageConversion languageConversion, IProgress<ConversionProgress> progress, [EnumeratorCancellation] CancellationToken cancellationToken,
             params (string Find, string Replace, bool FirstOnly)[] replacements)

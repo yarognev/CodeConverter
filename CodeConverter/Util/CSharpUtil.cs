@@ -8,7 +8,8 @@ using VBasic = Microsoft.CodeAnalysis.VisualBasic;
 
 namespace ICSharpCode.CodeConverter.Util
 {
-    internal static class CSharpUtil
+    //TODO MAKE INTERNAL
+    public static class CSharpUtil
     {
         /// <summary>
         /// Inverts a boolean condition. Note: The condition object can be frozen (from AST) it's cloned internally.

@@ -64,11 +64,36 @@ namespace ICSharpCode.CodeConverter.VsExtension
             }
         }
 
-        public async Task ConvertDocumentAsync<TLanguageConversion>(string documentFilePath, Span selected, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        public async Task ConvertFilesAsync<TLanguageConversion>(IReadOnlyCollection<FileInfo> toConvert, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        {
+            try {
+                await _joinableTaskFactory.RunAsync(async () => {
+                    var convertedFiles = ConvertFilesUnhandled<TLanguageConversion>(toConvert, cancellationToken);
+                    await WriteConvertedFilesAndShowSummaryAsync(convertedFiles);
+                });
+            } catch (OperationCanceledException) {
+                if (!_packageCancellation.CancelAll.IsCancellationRequested) {
+                    await _outputWindow.WriteToOutputWindowAsync(Environment.NewLine + "Previous conversion cancelled", forceShow: true);
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<ConversionResult> ConvertFilesUnhandled<TLanguageConversion>(IReadOnlyCollection<FileInfo> toConvert, [EnumeratorCancellation] CancellationToken cancellationToken)
+            where TLanguageConversion : ILanguageConversion, new()
+        {
+            if (toConvert.Count > 1) {
+                await _outputWindow.WriteToOutputWindowAsync($"Converting {toConvert.Count} files...", true, true);
+            }
+
+            var results = ProjectConversion.Convert<TLanguageConversion>(_visualStudioWorkspace, toConvert, progress: CreateOutputWindowProgress(), cancellationToken: cancellationToken);
+            await foreach (var result in results) yield return result;
+        }
+
+        public async Task ConvertSpanAsync<TLanguageConversion>(string documentFilePath, Span selected, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
         {
             try {
                 var conversionResult = await _joinableTaskFactory.RunAsync(async () => {
-                    var result = await ConvertDocumentUnhandledAsync<TLanguageConversion>(documentFilePath, selected, cancellationToken);
+                    var result = await ConvertSpanUnhandledAsync<TLanguageConversion>(documentFilePath, selected, cancellationToken);
                     await WriteConvertedFilesAndShowSummaryAsync(new[] { result }.ToAsyncEnumerable());
                     return result;
                 });
@@ -211,7 +236,7 @@ Please 'Reload All' when Visual Studio prompts you.", true, files.Count > errors
                                        + Environment.NewLine;
         }
 
-        private async Task<ConversionResult> ConvertDocumentUnhandledAsync<TLanguageConversion>(string documentPath, Span selected, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        private async Task<ConversionResult> ConvertSpanUnhandledAsync<TLanguageConversion>(string documentPath, Span selected, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
         {
             await _outputWindow.WriteToOutputWindowAsync($"Converting {documentPath}...", true, true);
 
