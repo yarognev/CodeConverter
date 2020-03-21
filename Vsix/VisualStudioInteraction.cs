@@ -73,7 +73,12 @@ namespace ICSharpCode.CodeConverter.VsExtension
         private static IReadOnlyCollection<string> GetFileNames(ProjectItem p)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            return (p.Collection as IEnumerable<object>).Cast<string>().ToArray();
+            var fileNames = p.ProjectItems.Count > 0 ? p.ProjectItems.Cast<ProjectItem>().SelectMany(GetFileNames)
+#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread - ToList below ensure the ThrowIfNotOnUIThread above covers this
+                : Enumerable.Range(1, p.FileCount).Select(i => p.FileNames[(short)i]);
+#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
+
+            return fileNames.ToList();
         }
 
         public static async Task<IReadOnlyCollection<Project>> GetSelectedProjectsAsync(string projectExtension)

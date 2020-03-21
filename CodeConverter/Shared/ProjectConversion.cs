@@ -55,19 +55,12 @@ namespace ICSharpCode.CodeConverter.Shared
             progress = progress ?? new Progress<ConversionProgress>();
             using var roslynEntryPoint = await RoslynEntryPoint(progress);
 
-            var languageConversion = new TLanguageConversion { ConversionOptions = conversionOptions };
-
             bool returnSelectedNode = conversionOptions.SelectedTextSpan.Length > 0;
             if (returnSelectedNode) {
                 document = await WithAnnotatedSelection(document, conversionOptions.SelectedTextSpan);
             }
 
-            var projectContentsConverter = await languageConversion.CreateProjectContentsConverter(document.Project, progress, cancellationToken);
-
-            document = projectContentsConverter.Project.GetDocument(document.Id);
-
-            var conversion = new ProjectConversion(projectContentsConverter, new[] { document }, Enumerable.Empty<TextDocument>(), languageConversion, cancellationToken, conversionOptions.ShowCompilationErrors, returnSelectedNode);
-            var conversionResults = await conversion.Convert(progress).ToArrayAsync();
+            var conversionResults = await ConvertProjectDocuments<TLanguageConversion>(new[] { document }, conversionOptions, progress, cancellationToken, returnSelectedNode).ToArrayAsync();
             return GetSingleResultForDocument(conversionResults, document, progress);
         }
 
@@ -83,15 +76,19 @@ namespace ICSharpCode.CodeConverter.Shared
         /// * Make this internal, and call through a decent public interface - e.g. ConversionWorkspace
         /// * Allow source effects (i.e. renames) from one conversion to affect the next, but not reference changes
         /// </summary>
-        public static IAsyncEnumerable<ConversionResult> Convert<TLanguageConversion>(Workspace workspace, IReadOnlyCollection<FileInfo> toConvert,
-            IProgress<ConversionProgress> progress, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
+        public static async IAsyncEnumerable<ConversionResult> Convert<TLanguageConversion>(Workspace workspace, IReadOnlyCollection<FileInfo> toConvert,
+            IProgress<ConversionProgress> progress, [EnumeratorCancellation] CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
         {
+            using var roslynEntryPoint = await RoslynEntryPoint(progress);
+
             var solutionProjects = workspace.CurrentSolution.Projects.ToDictionary(p => p.FilePath ?? "", StringComparer.OrdinalIgnoreCase);
             var filesByType = toConvert.ToLookup(GetFileType);
             var languageConversion = new TLanguageConversion();
             if (filesByType[FileType.Solution].Any()) {
                 var projects = workspace.CurrentSolution.Projects.Where(p => p.Language == languageConversion.SourceLanguage);
-                return ConvertProjects<TLanguageConversion>(progress, languageConversion, projects, cancellationToken);
+                var slnResults = ConvertProjects<TLanguageConversion>(progress, languageConversion, projects, cancellationToken);
+                await foreach (var result in slnResults) yield return result;
+                yield break;
             }
             var projectsToConvert = filesByType[FileType.Project].SelectMany(f => solutionProjects.TryGetValue(f.FullName, out var p) ? p.Yield() : Enumerable.Empty<Project>()).ToArray();
             var projectIdsToConvert = new HashSet<ProjectId>(projectsToConvert.Select(p => p.Id));
@@ -104,7 +101,8 @@ namespace ICSharpCode.CodeConverter.Shared
                 ConvertDocuments<TLanguageConversion>(workspace, progress, documentsToConvert, cancellationToken)
                 : AsyncEnumerable.Empty<ConversionResult>();
 
-            return docResults.Concat(ConvertProjects<TLanguageConversion>(progress, languageConversion, projectsToConvert, cancellationToken));
+            var results = docResults.Concat(ConvertProjects<TLanguageConversion>(progress, languageConversion, projectsToConvert, cancellationToken));
+            await foreach (var result in results) yield return result;
         }
 
         /// <summary>
@@ -112,7 +110,22 @@ namespace ICSharpCode.CodeConverter.Shared
         /// </summary>
         private static IAsyncEnumerable<ConversionResult> ConvertDocuments<TLanguageConversion>(Workspace workspace, IProgress<ConversionProgress> progress, DocumentId[] documentsToConvert, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()
         {
-            return documentsToConvert.ToAsyncEnumerable().SelectAwait(async d => await ConvertSingle<TLanguageConversion>(workspace.CurrentSolution.GetDocument(d), new SingleConversionOptions(), progress, cancellationToken));
+            var conversionOptions = new ConversionOptions(); //TODO parameter?
+            return documentsToConvert.GroupBy(d => d.ProjectId, d => workspace.CurrentSolution.GetDocument(d)).ToAsyncEnumerable().SelectMany(g =>
+                    ConvertProjectDocuments<TLanguageConversion>(g.ToArray(), conversionOptions, progress, cancellationToken)
+                );
+        }
+
+        private static async IAsyncEnumerable<ConversionResult> ConvertProjectDocuments<TLanguageConversion>(IReadOnlyCollection<Document> documents, ConversionOptions conversionOptions, IProgress<ConversionProgress> progress, [EnumeratorCancellation] CancellationToken cancellationToken, bool returnSelectedNode = false) where TLanguageConversion : ILanguageConversion, new()
+        {
+            var languageConversion = new TLanguageConversion { ConversionOptions = conversionOptions };
+            var projectContentsConverter = await languageConversion.CreateProjectContentsConverter(documents.ElementAt(0).Project, progress, cancellationToken);
+
+            documents = documents.Select(d => projectContentsConverter.Project.GetDocument(d.Id)).ToArray();
+
+            var conversion = new ProjectConversion(projectContentsConverter, documents, languageConversion, cancellationToken, conversionOptions.ShowCompilationErrors, returnSelectedNode);
+            var results = conversion.Convert(progress);
+            await foreach (var result in results) yield return result;
         }
 
         private static IAsyncEnumerable<ConversionResult> ConvertProjects<TLanguageConversion>(IProgress<ConversionProgress> progress, TLanguageConversion languageConversion, IEnumerable<Project> projects, CancellationToken cancellationToken) where TLanguageConversion : ILanguageConversion, new()

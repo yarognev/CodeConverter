@@ -6,5 +6,7 @@ namespace ICSharpCode.CodeConverter.Shared
     {
         public string RootNamespaceOverride { get; set; }
         public CompilationOptions TargetCompilationOptionsOverride { get; set; }
+
+        internal bool ShowCompilationErrors { get; set; }
     }
 }
