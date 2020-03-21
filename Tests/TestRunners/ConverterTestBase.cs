@@ -171,6 +171,7 @@ End Sub";
             this.baseConversion = new CSToVBConversion();
         }
 
+        string ILanguageConversion.SourceLanguage => baseConversion.SourceLanguage;
         string ILanguageConversion.TargetLanguage => baseConversion.TargetLanguage;
 
         ConversionOptions ILanguageConversion.ConversionOptions { get => baseConversion.ConversionOptions; set => baseConversion.ConversionOptions = value; }

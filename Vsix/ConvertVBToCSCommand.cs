@@ -159,7 +159,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
         private async Task ProjectItemMenuItemCallbackAsync(CancellationToken cancellationToken)
         {
             var documents = await VisualStudioInteraction.GetSelectedDocumentsAsync(".vb");
-            await (itemPath, new Span(0, 0), cancellationToken);
+            await ConvertDocumentsAsync(documents, cancellationToken);
         }
 
         private async Task SolutionOrProjectMenuItemCallbackAsync(CancellationToken cancellationToken)

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using ICSharpCode.CodeConverter.VB;
@@ -130,9 +132,8 @@ namespace ICSharpCode.CodeConverter.VsExtension
                 menuItem.Visible = false;
                 menuItem.Enabled = false;
 
-                string itemPath = await VisualStudioInteraction.GetSingleSelectedItemPathOrDefaultAsync();
-                if (itemPath == null || !CodeConversion.IsCSFileName(itemPath))
-                    return;
+                var itemPaths = await VisualStudioInteraction.GetSelectedDocumentsAsync(".cs");
+                if (!itemPaths.Any()) return;
 
                 menuItem.Visible = true;
                 menuItem.Enabled = true;
@@ -157,8 +158,8 @@ namespace ICSharpCode.CodeConverter.VsExtension
 
         private async Task ProjectItemMenuItemCallbackAsync(CancellationToken cancellationToken)
         {
-            string itemPath = await VisualStudioInteraction.GetSingleSelectedItemPathOrDefaultAsync();
-            await ConvertDocumentAsync(itemPath, new Span(0, 0), cancellationToken);
+            var itemPaths = await VisualStudioInteraction.GetSelectedDocumentsAsync(".cs");
+            await ConvertDocumentsAsync(itemPaths, cancellationToken);
         }
 
         private async Task SolutionOrProjectMenuItemCallbackAsync(CancellationToken cancellationToken)
@@ -178,6 +179,17 @@ namespace ICSharpCode.CodeConverter.VsExtension
 
             try {
                 await _codeConversion.ConvertSpanAsync<CSToVBConversion>(documentPath, selected, cancellationToken);
+            } catch (Exception ex) {
+                await VisualStudioInteraction.ShowExceptionAsync(ServiceProvider, CodeConversion.ConverterTitle, ex);
+            }
+        }
+
+        private async Task ConvertDocumentsAsync(IReadOnlyCollection<string> filePaths, CancellationToken cancellationToken)
+        {
+            if (!filePaths.Any()) return;
+
+            try {
+                await _codeConversion.ConvertFilesAsync<CSToVBConversion>(filePaths.Select(f => new FileInfo(f)).ToList(), cancellationToken);
             } catch (Exception ex) {
                 await VisualStudioInteraction.ShowExceptionAsync(ServiceProvider, CodeConversion.ConverterTitle, ex);
             }

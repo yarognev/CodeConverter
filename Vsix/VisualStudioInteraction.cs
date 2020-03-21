@@ -41,17 +41,6 @@ namespace ICSharpCode.CodeConverter.VsExtension
             CancelAllToken = packageCancellation.CancelAll;
         }
 
-        public static async Task<string> GetSingleSelectedItemPathOrDefaultAsync()
-        {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
-
-            var selectedItem = GetSelectedSolutionExplorerItems<ProjectItem>();
-            var itemPath = selectedItem.FileCount == 1 ? selectedItem.FileNames[1] : null;
-
-            await TaskScheduler.Default;
-            return itemPath;
-        }
-
         public static async Task<Window> OpenFileAsync(FileInfo fileInfo)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
@@ -67,7 +56,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
             await TaskScheduler.Default;
         }
 
-        public static async Task<IReadOnlyCollection<ProjectItem>> GetSelectedDocumentsAsync(string fileExtension)
+        public static async Task<IReadOnlyCollection<string>> GetSelectedDocumentsAsync(string fileExtension)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
 
