@@ -20,6 +20,7 @@ using Constants = EnvDTE.Constants;
 using IAsyncServiceProvider = Microsoft.VisualStudio.Shell.IAsyncServiceProvider;
 using Task = System.Threading.Tasks.Task;
 using Window = EnvDTE.Window;
+using ICSharpCode.CodeConverter.Util;
 
 namespace ICSharpCode.CodeConverter.VsExtension
 {
@@ -44,7 +45,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
 
-            var selectedItem = GetSingleSelectedItemOrDefault();
+            var selectedItem = GetSelectedSolutionExplorerItems<ProjectItem>();
             var itemPath = selectedItem.FileCount == 1 ? selectedItem.FileNames[1] : null;
 
             await TaskScheduler.Default;
@@ -65,6 +66,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
             ((TextSelection)window.Document.Selection).SelectAll();
             await TaskScheduler.Default;
         }
+
         public static async Task<IReadOnlyCollection<Project>> GetSelectedProjectsAsync(string projectExtension)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
@@ -150,12 +152,6 @@ namespace ICSharpCode.CodeConverter.VsExtension
                 return result;
             }
 
-        }
-
-        private static ProjectItem GetSingleSelectedItemOrDefault()
-        {
-            var items = GetSelectedSolutionExplorerItems<ProjectItem>();
-            return items.Count() == 1 ? items.Single() : null;
         }
 
         private static IEnumerable<T> GetSelectedSolutionExplorerItems<T>() where T: class

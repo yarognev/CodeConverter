@@ -177,7 +177,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
                 return;
 
             try {
-                await _codeConversion.ConvertDocumentAsync<CSToVBConversion>(documentPath, selected, cancellationToken);
+                await _codeConversion.ConvertSpanAsync<CSToVBConversion>(documentPath, selected, cancellationToken);
             } catch (Exception ex) {
                 await VisualStudioInteraction.ShowExceptionAsync(ServiceProvider, CodeConversion.ConverterTitle, ex);
             }

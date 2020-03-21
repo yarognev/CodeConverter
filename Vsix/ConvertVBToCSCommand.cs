@@ -130,7 +130,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
                 menuItem.Visible = false;
                 menuItem.Enabled = false;
 
-                string itemPath = await VisualStudioInteraction.GetSingleSelectedItemPathOrDefaultAsync();
+                string itemPath = await VisualStudioInteraction.GetCurrentFilenameAndSelectionAsync();
                 if (itemPath == null || !CodeConversion.IsVBFileName(itemPath))
                     return;
 
@@ -177,7 +177,7 @@ namespace ICSharpCode.CodeConverter.VsExtension
                 return;
 
             try {
-                await _codeConversion.ConvertDocumentAsync<VBToCSConversion>(documentPath, selected, cancellationToken);
+                await _codeConversion.ConvertSpanAsync<VBToCSConversion>(documentPath, selected, cancellationToken);
             } catch (Exception ex) {
                 await VisualStudioInteraction.ShowExceptionAsync(ServiceProvider, CodeConversion.ConverterTitle, ex);
             }
