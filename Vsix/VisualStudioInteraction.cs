@@ -67,6 +67,26 @@ namespace ICSharpCode.CodeConverter.VsExtension
             await TaskScheduler.Default;
         }
 
+        public static async Task<IReadOnlyCollection<ProjectItem>> GetSelectedDocumentsAsync(string fileExtension)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
+
+#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
+            var documents = GetSelectedSolutionExplorerItems<ProjectItem>().SelectMany(p => GetFileNames(p))
+                .Where(fileName => fileName.EndsWith(fileExtension, StringComparison.InvariantCultureIgnoreCase))
+                .Distinct()
+                .ToList();
+#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
+            await TaskScheduler.Default;
+            return documents;
+        }
+
+        private static IReadOnlyCollection<string> GetFileNames(ProjectItem p)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            return (p.Collection as IEnumerable<object>).Cast<string>().ToArray();
+        }
+
         public static async Task<IReadOnlyCollection<Project>> GetSelectedProjectsAsync(string projectExtension)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
