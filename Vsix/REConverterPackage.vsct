@@ -15,6 +15,12 @@
       <Group guid="guidCodeConverterCommandPackageCmdSet" id="CodeConverterProjectItemCtxMenuGroup" priority="0x0300">
         <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_ITEMNODE"/>
       </Group>
+      <Group guid="guidCodeConverterCommandPackageCmdSet" id="CodeConverterProjectItemCtxMenuGroup" priority="0x0300">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_FOLDERNODE"/>
+      </Group>
+      <Group guid="guidCodeConverterCommandPackageCmdSet" id="CodeConverterProjectItemCtxMenuGroup" priority="0x0300">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_XPROJ_PROJITEM"/>
+      </Group>
       <Group guid="guidCodeConverterCommandPackageCmdSet" id="CodeConverterProjectCtxMenuGroup" priority="0x0300" />
       <Group guid="guidCodeConverterCommandPackageCmdSet" id="CodeConverterSolutionCtxMenuGroup" priority="0x0300" />
     </Groups>
