@@ -43,8 +43,10 @@ namespace ICSharpCode.CodeConverter.VsExtension
         public static async Task<string> GetSingleSelectedItemPathOrDefaultAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
-            var selectedItem = await GetSingleSelectedItemOrDefaultAsync();
-            var itemPath = selectedItem?.ItemPath;
+
+            var selectedItem = GetSingleSelectedItemOrDefault();
+            var itemPath = selectedItem.FileCount == 1 ? selectedItem.FileNames[1] : null;
+
             await TaskScheduler.Default;
             return itemPath;
         }
@@ -150,37 +152,12 @@ namespace ICSharpCode.CodeConverter.VsExtension
 
         }
 
-        private static async Task<VsDocument> GetSingleSelectedItemOrDefaultAsync()
+        private static ProjectItem GetSingleSelectedItemOrDefault()
         {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(CancelAllToken);
-            var monitorSelection = Package.GetGlobalService(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
-            var solution = Package.GetGlobalService(typeof(SVsSolution)) as IVsSolution;
-
-            if ((monitorSelection == null) || (solution == null))
-                return null;
-
-            var hResult = monitorSelection.GetCurrentSelection(out var hierarchyPtr, out uint itemId, out var multiItemSelect, out var selectionContainerPtr);
-            try {
-                if (ErrorHandler.Failed(hResult) || hierarchyPtr == IntPtr.Zero || itemId == VSConstants.VSITEMID_NIL ||
-                    multiItemSelect != null || itemId == VSConstants.VSITEMID_ROOT ||
-                    !(Marshal.GetObjectForIUnknown(hierarchyPtr) is IVsHierarchy hierarchy)) {
-                    return null;
-                }
-
-                int result = solution.GetGuidOfProject(hierarchy, out Guid guidProjectId);
-                // ReSharper disable once SuspiciousTypeConversion.Global - COM Object
-                return ErrorHandler.Succeeded(result) ? new VsDocument((IVsProject) hierarchy, guidProjectId, itemId) : null;
-
-            } finally {
-                if (selectionContainerPtr != IntPtr.Zero) {
-                    Marshal.Release(selectionContainerPtr);
-                }
-
-                if (hierarchyPtr != IntPtr.Zero) {
-                    Marshal.Release(hierarchyPtr);
-                }
-            }
+            var items = GetSelectedSolutionExplorerItems<ProjectItem>();
+            return items.Count() == 1 ? items.Single() : null;
         }
+
         private static IEnumerable<T> GetSelectedSolutionExplorerItems<T>() where T: class
         {
             ThreadHelper.ThrowIfNotOnUIThread();
