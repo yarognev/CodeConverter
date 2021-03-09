@@ -849,7 +849,17 @@ namespace ICSharpCode.CodeConverter.VB
                         )
                     };
                 _extraImports.Add(nameof(System) + "." + nameof(System.Runtime) + "." + nameof(System.Runtime.InteropServices));
-            } else {
+            } else if (node.Modifiers.Any(CS.SyntaxKind.ParamsKeyword) && node.Parent.Parent.IsKind(CS.SyntaxKind.DelegateDeclaration)) {
+                modifiers = modifiers.RemoveOnly(m=>m.IsKind(SyntaxKind.ParamArrayKeyword));
+                newAttributes = new[] {
+                        SyntaxFactory.AttributeList(
+                            SyntaxFactory.SingletonSeparatedList(
+                                SyntaxFactory.Attribute(
+                                    SyntaxFactory.QualifiedName(SyntaxFactory.IdentifierName(nameof(System)),SyntaxFactory.IdentifierName("[ParamArray]")))
+                            )
+                        )
+                    };
+            } else { 
                 newAttributes = Array.Empty<AttributeListSyntax>();
             }
             if (@default != null) {
