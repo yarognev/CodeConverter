@@ -25,27 +25,6 @@ End Class
 ", conversionOptions:new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false});
         }
         [Fact]
-        public async Task TestMainMethodAsync()
-        {
-            await TestConversionCSharpToVisualBasicAsync(
-@"static class Program {
-    static void Main(string[] args) {
-        DoSome();
-    }
-
-    static void DoSome() {
-    }
-}", @"Friend Module Program
-    Sub Main(ByVal args As String())
-        DoSome()
-    End Sub
-
-    Private Sub DoSome()
-    End Sub
-End Module
-", conversionOptions: new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false });
-        }
-        [Fact]
         public async Task TestPropertyWithModifierAsync()
         {
             await TestConversionCSharpToVisualBasicAsync(
