@@ -1208,8 +1208,19 @@ namespace ICSharpCode.CodeConverter.VB
 
         public override VisualBasicSyntaxNode VisitElementAccessExpression(CSS.ElementAccessExpressionSyntax node)
         {
+            ExpressionSyntax syntax;
+            ExpressionSyntax baseEx = (ExpressionSyntax)node.Expression.Accept(TriviaConvertingVisitor);
+            if (node.Expression.IsKind(CS.SyntaxKind.BaseExpression) && node.ArgumentList is CSS.BracketedArgumentListSyntax) {
+                syntax = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    baseEx, 
+                    SyntaxFactory.Token(SyntaxKind.DotToken),
+                    SyntaxFactory.IdentifierName("Item"));
+            } else 
+                syntax = baseEx;
+
             return SyntaxFactory.InvocationExpression(
-                (ExpressionSyntax)node.Expression.Accept(TriviaConvertingVisitor),
+                 syntax,
                 (ArgumentListSyntax)node.ArgumentList.Accept(TriviaConvertingVisitor)
             );
         }
