@@ -8,6 +8,22 @@ namespace ICSharpCode.CodeConverter.Tests.VB
     public class MemberTests : ConverterTestBase
     {
         [Fact]
+        public async Task TestParamArrayInDelegateAsync()
+        {
+            await TestConversionCSharpToVisualBasicAsync(
+@"static class Program {
+    public delegate string ApplyFilterDelegate(string img, params object[] filterParams);
+    public static void DoSome(params string[] args) { }
+}", @"Friend Module Program
+    Public Delegate Function ApplyFilterDelegate(ByVal img As String, <System.[ParamArray]> filterParams As Object()) As String
+
+    Public Sub DoSome(ParamArray args As String())
+    End Sub
+End Module
+", conversionOptions: new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false });
+        }
+
+        [Fact]
         public async Task TestPropertyWithModifierAsync()
         {
             await TestConversionCSharpToVisualBasicAsync(
