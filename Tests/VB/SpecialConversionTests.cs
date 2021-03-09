@@ -7,6 +7,122 @@ namespace ICSharpCode.CodeConverter.Tests.VB
     public class SpecialConversionTests : ConverterTestBase
     {
         [Fact]
+        public async Task TestOverrideEventAsync()
+        {
+            await TestConversionCSharpToVisualBasicAsync(
+@"using System;
+namespace ConsoleApp2 {
+class MyButton : ClassBase {
+    public new event System.EventHandler SomeEvent {
+        add { base.SomeEvent += value; }
+        remove { base.SomeEvent -= value; }
+    }
+}
+class ClassBase {
+    public event System.EventHandler SomeEvent;
+}
+}", @"Imports System
+
+Namespace ConsoleApp2
+    Friend Class MyButton
+        Inherits ClassBase
+
+        Public Shadows Custom Event SomeEvent As EventHandler
+            AddHandler(ByVal value As EventHandler)
+                AddHandler MyBase.SomeEvent, value
+            End AddHandler
+            RemoveHandler(ByVal value As EventHandler)
+                RemoveHandler MyBase.SomeEvent, value
+            End RemoveHandler
+            RaiseEvent(ByVal sender As Object, ByVal e As EventArgs)
+            End RaiseEvent
+        End Event
+    End Class
+
+    Friend Class ClassBase
+        Public Event SomeEvent As EventHandler
+    End Class
+End Namespace
+", conversionOptions: new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false });
+        }
+        [Fact]
+        public async Task TestEventComponentModelAsync()
+        {
+            await TestConversionCSharpToVisualBasicAsync(
+@"using System;
+using System.ComponentModel;
+namespace ConsoleApp2 {
+class TestClass : Component {
+    static readonly object changeHistoryCore = new object();
+    public event EventHandler ChangeHistory {
+        add { Events.AddHandler(changeHistoryCore, value); }
+        remove { Events.RemoveHandler(changeHistoryCore, value); }
+    }
+}
+}", @"Imports System
+Imports System.ComponentModel
+
+Namespace ConsoleApp2
+    Friend Class TestClass
+        Inherits Component
+
+        Private Shared ReadOnly changeHistoryCore As Object = New Object()
+
+        Public Custom Event ChangeHistory As EventHandler
+            AddHandler(ByVal value As EventHandler)
+                Events.AddHandler(changeHistoryCore, value)
+            End AddHandler
+            RemoveHandler(ByVal value As EventHandler)
+                Events.RemoveHandler(changeHistoryCore, value)
+            End RemoveHandler
+            RaiseEvent(ByVal sender As Object, ByVal e As EventArgs)
+            End RaiseEvent
+        End Event
+    End Class
+End Namespace
+", conversionOptions: new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false });
+        }
+        [Fact]
+        public async Task TestEventFromFieldAsync()
+        {
+            await TestConversionCSharpToVisualBasicAsync(
+@"using System;
+namespace ConsoleApp2 {
+class MyButton {
+        public event EventHandler SomeEvent;
+}
+class ClassMain {
+     MyButton button = new MyButton();
+     public event EventHandler ApplyFilter {
+         add { button.SomeEvent += value; }
+         remove { button.SomeEvent -= value; }
+     }
+}
+}", @"Imports System
+
+Namespace ConsoleApp2
+    Friend Class MyButton
+        Public Event SomeEvent As EventHandler
+    End Class
+
+    Friend Class ClassMain
+        Private button As MyButton = New MyButton()
+
+        Public Custom Event ApplyFilter As EventHandler
+            AddHandler(ByVal value As EventHandler)
+                AddHandler button.SomeEvent, value
+            End AddHandler
+            RemoveHandler(ByVal value As EventHandler)
+                RemoveHandler button.SomeEvent, value
+            End RemoveHandler
+            RaiseEvent(ByVal sender As Object, ByVal e As EventArgs)
+            End RaiseEvent
+        End Event
+    End Class
+End Namespace
+", conversionOptions: new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false });
+        }
+        [Fact]
         public async Task TestSimpleInlineAssignAsync() {
             await TestConversionCSharpToVisualBasicAsync(
                 @"class TestClass {

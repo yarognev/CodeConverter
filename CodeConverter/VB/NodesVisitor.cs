@@ -612,6 +612,9 @@ namespace ICSharpCode.CodeConverter.VB
             var id = _commonConversions.ConvertIdentifier(node.Identifier);
             var modifiers = CommonConversions.ConvertModifiers(node.Modifiers, GetMemberContext(node))
                 .Add(SyntaxFactory.Token(SyntaxKind.CustomKeyword));
+            int overloadsTokenIndex = modifiers.ToList().FindIndex(m => m.IsKind(SyntaxKind.OverloadsKeyword));
+            if (overloadsTokenIndex != -1) 
+                modifiers = modifiers.RemoveAt(overloadsTokenIndex).Insert(overloadsTokenIndex, SyntaxFactory.Token(SyntaxKind.ShadowsKeyword));
             var implementsClauseSyntaxOrNull = declaredSymbol == null ? null : CreateImplementsClauseSyntaxOrNull(declaredSymbol, ref id);
             var stmt = SyntaxFactory.EventStatement(
                 attributes, modifiers, id, null,
@@ -628,15 +631,25 @@ namespace ICSharpCode.CodeConverter.VB
                     .WithAsClause(SyntaxFactory.SimpleAsClause(GetTypeSyntax(x.Type)))
                     .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.ByValKeyword)))
             );
-            var csEventFieldIdentifier = node.AccessorList?.Accessors
+            var eventExpressionIdentifierRaw = node.AccessorList?.Accessors
                 .SelectMany(x => x.Body.Statements)
                 .OfType<CSS.ExpressionStatementSyntax>()
                 .Where(x => x.Expression != null)
                 .Select(x => x.Expression)
                 .OfType<CSS.AssignmentExpressionSyntax>()
-                .SelectMany(x => x.Left.DescendantNodesAndSelf().OfType<CSS.IdentifierNameSyntax>())
-                .FirstOrDefault();
-            var eventFieldIdentifier = (IdentifierNameSyntax)csEventFieldIdentifier?.Accept(TriviaConvertingVisitor, false);
+                .FirstOrDefault()?.Left;
+
+            SymbolInfo? eventExpressionIdentifierInfo = null;
+            CSS.SimpleNameSyntax eventFieldIdentifierName = null;
+            IdentifierNameSyntax eventFieldIdentifier = null;
+            if (eventExpressionIdentifierRaw != null) {
+                eventExpressionIdentifierInfo = _semanticModel.GetSymbolInfo(eventExpressionIdentifierRaw);
+                if (eventExpressionIdentifierRaw is CSS.MemberAccessExpressionSyntax)
+                    eventFieldIdentifierName = ((CSS.MemberAccessExpressionSyntax)eventExpressionIdentifierRaw).Name;
+                else if (eventExpressionIdentifierRaw is CSS.SimpleNameSyntax)
+                    eventFieldIdentifierName = eventExpressionIdentifierRaw as CSS.SimpleNameSyntax;
+                eventFieldIdentifier = (IdentifierNameSyntax)eventFieldIdentifierName?.Accept(TriviaConvertingVisitor, false);
+            }
 
             var raiseEventAccessor = SyntaxFactory.RaiseEventAccessorBlock(
                 SyntaxFactory.RaiseEventAccessorStatement(
@@ -646,12 +659,16 @@ namespace ICSharpCode.CodeConverter.VB
                 )
             );
             if (eventFieldIdentifier != null) {
-                if (_semanticModel.GetSymbolInfo(csEventFieldIdentifier).Symbol.Kind == SymbolKind.Event) {
-                    raiseEventAccessor = raiseEventAccessor.WithStatements(SyntaxFactory.SingletonList(
-                        (StatementSyntax)SyntaxFactory.RaiseEventStatement(eventFieldIdentifier,
-                            SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(raiseEventParameters.Select(x => SyntaxFactory.SimpleArgument(SyntaxFactory.IdentifierName(x.Identifier.Identifier))).Cast<ArgumentSyntax>())))
-                        )
-                    );
+                if (eventExpressionIdentifierInfo.Value.Symbol.Kind == SymbolKind.Event) {
+                
+                    bool isSameType = _semanticModel.GetDeclaredSymbol(node).ContainingType.Equals(eventExpressionIdentifierInfo.Value.Symbol.ContainingType);
+                    bool isBaseType = !isSameType && _semanticModel.GetDeclaredSymbol(node).ContainingType.InheritsFromOrEquals(eventExpressionIdentifierInfo.Value.Symbol.ContainingType);
+                    if (isSameType) {
+                        raiseEventAccessor = raiseEventAccessor.WithStatements(SyntaxFactory.SingletonList(
+                                                (StatementSyntax)SyntaxFactory.RaiseEventStatement(eventFieldIdentifier,
+                                                    SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(raiseEventParameters.Select(x => SyntaxFactory.SimpleArgument(SyntaxFactory.IdentifierName(x.Identifier.Identifier))).Cast<ArgumentSyntax>())))
+                                                ));
+                    }
                 } else {
                     if ((int)LanguageVersion < 14) {
                         var conditionalStatement = _vbSyntaxGenerator.IfStatement(
