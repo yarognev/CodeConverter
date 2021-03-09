@@ -8,6 +8,23 @@ namespace ICSharpCode.CodeConverter.Tests.VB
     public class MemberTests : ConverterTestBase
     {
         [Fact]
+        public async Task TestPropertyIndexerAsync()
+        {
+            await TestConversionCSharpToVisualBasicAsync(
+@"class Sample : ArrayList {
+        public new string this[int index] { get { return base[index]; } }
+    }", @"Friend Class Sample
+    Inherits ArrayList
+
+    Default Public Overloads ReadOnly Property Item(ByVal index As Integer) As String
+        Get
+            Return MyBase.Item(index)
+        End Get
+    End Property
+End Class
+", conversionOptions:new Shared.TextConversionOptions(Shared.DefaultReferences.NetStandard2) { ShowCompilationErrors = false});
+        }
+        [Fact]
         public async Task TestPropertyWithModifierAsync()
         {
             await TestConversionCSharpToVisualBasicAsync(
