@@ -32,19 +32,19 @@ namespace ICSharpCode.CodeConverter.Shared
                 .Where(n => nodesWithUnresolvedTypes.Contains(n) || wouldBeSimplifiedIncorrectly(n))
                 .ToArray();
             var doNotSimplify = nodesToConsider
-                .SelectMany(n => n.AncestorsAndSelf())
+                .SelectMany(n => n.DescendantNodesAndSelf())
                 .ToImmutableHashSet();
             var toSimplify = originalRoot
                 .DescendantNodes()
                 .Where(n => !doNotSimplify.Contains(n));
-            var newRoot = originalRoot.ReplaceNodes(toSimplify, (orig, rewritten) =>
-                rewritten.WithAdditionalAnnotations(Simplifier.Annotation)
+            var newRoot = originalRoot.ReplaceNodes(doNotSimplify, (orig, rewritten) =>
+                rewritten.WithAdditionalAnnotations(Simplifier.SpecialTypeAnnotation)
             );
-
+			
             var document = await convertedDocument.WithReducedRootAsync(newRoot, cancellationToken);
             return document;
         }
-
+		
         private static bool VbWouldBeSimplifiedIncorrectly(SyntaxNode n)
         {
             //Roslyn bug: empty argument list gets removed and changes behaviour: https://github.com/dotnet/roslyn/issues/40442
